@@ -6,17 +6,22 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font
 
-
 def extract_table(text):
     """
     Extracts the markdown table from the given response text.
+    [最小化优化]：放宽正则匹配条件，兼容中/英文表头，只匹配表格的分隔线结构。
     """
-    table_pattern = r"\| No\. \| Name \| Last Viewed \| Tag \| Problem Pattern/Solution \| When to Use/Scale \|([\s\S]+?)\n---"
+    # 优化后的正则：匹配类似 "|----|------|..." 这样的分隔线，并向下提取直到 "---" 结束。
+    # (?<=\n) 确保匹配的是新的一行的开头
+    table_pattern = r"(?<=\n)(\|[-]+\|[-]+\|.*)([\s\S]+?)(?=\n---)"
+    
     match = re.search(table_pattern, text)
 
     if match:
-        table_text = match.group(1).strip()
-        return table_text
+        # group(1) 是那行 "|----|..." 分隔线，group(2) 是下面的数据行
+        table_text = "| Dummy | Header | 行 |\n" + match.group(1) + match.group(2)
+        return table_text.strip()
+        
     return None
 
 

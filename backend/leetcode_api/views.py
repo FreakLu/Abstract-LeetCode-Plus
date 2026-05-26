@@ -5,11 +5,12 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import LeetCodeProblem
 from .serializers import LeetCodeProblemSerializer
-from pipeline.llm_client import LeetCodeAgent
+from pipeline.llm_client import LeetCodeAgent, create_llm_client
 from pipeline.parse_response_to_csv import extract_table, parse_table_to_xlsx
 from django.http import FileResponse, HttpResponseNotFound
 import os
 from django.conf import settings
+from openai import OpenAI, OpenAIError
 
 
 def download_excel(request):
@@ -25,12 +26,38 @@ def download_excel(request):
 @api_view(["POST"])
 def solve_question_api(request):
     user_input = request.data.get("question")
-    agent = LeetCodeAgent(model="gpt-4")
+    response = None
 
+    provider = os.getenv("LLM_PROVIDER", "openai").lower()
+
+    default_models = {
+        "openai": "gpt-4o",
+        "deepseek": "deepseek-chat",
+        "siliconflow": "Qwen/Qwen2.5-72B-Instruct"
+    }
+    model_name = os.getenv("LLM_MODEL", default_models.get(provider, "gpt-4o"))
+
+    try:
+        llm_client = create_llm_client(provider=provider)
+        sys_language = os.getenv("APP_LANGUAGE", "zh").lower()
+        agent = LeetCodeAgent(client=llm_client, model=model_name, language=sys_language)
+        response = agent.generate_solution(user_input)
+    except ValueError as e:
+        return Response({"error": f"{str(e)}"}, status=400)
+    
+    except OpenAIError as e:
+        error_msg = f"API FAIL[{model_name}]\ndetails: {str(e)}"
+        print(f"❌ {error_msg}")
+        return Response({"error": error_msg}, status=400)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": f"service error: {str(e)}"}, status=500)
+
+    print("\nResponse:\n", response)
+       
     # if user_input.lower() == "exit":
     #     break
-    response = agent.generate_solution(user_input)
-    print("\nResponse:\n", response)
     if response:
         # Extract table and convert to Excel with Cambria font and Markdown conversion
         table_data = extract_table(response)
