@@ -2,4 +2,5 @@
 /leetcode_api/__pycache__/
 /leetcode_api/migrations/__pycache__/
 /pipeline/__pycache__/
+/data/
 .env
