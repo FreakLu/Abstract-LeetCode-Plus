@@ -27,9 +27,9 @@ const SolveQuestion = () => {
         }
 
         const examples = [
-            "Leetcode 42",
             "Leetcode 20: Valid Parentheses",
-            "Leetcode 20:"
+            "Leetcode 20:",
+            "20"
         ];
         
         const currentExample = examples[loopNum % examples.length];
