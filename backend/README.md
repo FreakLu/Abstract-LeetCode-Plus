@@ -31,5 +31,5 @@ pip install -r requirements.txt
 启动后端服务
 
 ```bash
-python manage.py runserver
+uvicorn main:app --reload --port 8000
 ```

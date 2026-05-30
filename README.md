@@ -39,7 +39,7 @@ The project uses a standard Mono-repo structure separating Frontend and Backend:
 
 ```text
 .
-├── backend/               Django backend (Handles LLM client & Excel archiving)
+├── backend/               FastAPI backend (Handles LLM client & Excel archiving)
 │   ├── leetcode_api/      - API routing and views
 │   ├── pipeline/          - LLM client & Markdown parser logic
 │   └── data/              - Local Excel solution database
@@ -59,7 +59,7 @@ For detailed server configuration, please refer to Backend Sub-README. Quick sta
 ```Bash
 cd backend
 pip install -r requirements.txt
-python manage.py runserver
+uvicorn main:app --reload --port 8000
 ```
 
 2. Frontend Interface
@@ -119,7 +119,7 @@ ABSTRACT 是一款专为刷 LeetCode 打造的智能学习与复习辅助工具�
 
 ```Plaintext
 .
-├── backend/               Django 后端服务（处理大模型交互与 Excel 题解归档）
+├── backend/               FastAPI 后端服务（处理大模型交互与 Excel 题解归档）
 │   ├── leetcode_api/      - API 路由与核心业务视图
 │   ├── pipeline/          - LLM 客户端与 Markdown 表格提取器
 │   └── data/              - 本地生成的 Excel 题解数据库
@@ -139,7 +139,7 @@ ABSTRACT 是一款专为刷 LeetCode 打造的智能学习与复习辅助工具�
 ```Bash
 cd backend
 pip install -r requirements.txt
-python manage.py runserver
+uvicorn main:app --reload --port 8000
 ```
 
 2. 前端界面启动
