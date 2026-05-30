@@ -13,7 +13,8 @@ export const solveQuestion = async (question) => {
         return response.data;
     } catch (error) {
         console.error("Error:", error.response?.data || error.message);
-        return { error: "Failed to get a response from the server." };
+        const backendError = error.response?.data?.error;
+        return { error: backendError || "Failed to get a response from the server." };
     }
 };
 

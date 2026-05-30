@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import SolveQuestion from "./components/SolveQuestion";
+import "./App.css";
 
 function App() {
     useEffect(() => {

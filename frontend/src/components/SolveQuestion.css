@@ -1,9 +1,30 @@
 .container {
-    /*width: 1000px;*/
+    width: 100%;
     max-width: 1000px;
-    margin: auto;
+    margin: 0 auto;
     padding: 20px;
     text-align: center;
+}
+
+.container h2 {
+    font-size: 40px;
+    font-weight: bold;
+    margin-bottom: 40px;
+    color: #ffffff;
+    text-shadow: 
+        0 0 5px #fff,
+        0 0 12px #3a7bd5;
+    letter-spacing: 2px;
+}
+
+.container h3 {
+    font-size: 24px;
+    margin-bottom: 40px;
+    color: #ffffff;
+    text-shadow: 
+        0 0 5px #fff,
+        0 0 12px #d53ab9;
+    letter-spacing: 2px;
 }
 
 .question-form {
@@ -14,48 +35,94 @@
 }
 
 .question-input {
-    width: 50%;
-    padding: 15px 10px 15px 25px;
-    border: 1px solid #ccc;
-    height: 8px;
+    flex: 1;
+    min-width: 250px;
+    padding: 16px 25px;
+    font-size: 16px;
     border-radius: 50px;
-    font-size: 14px;
-    box-shadow: 0px 2px 8px 0px rgba(60, 64, 67, 0.25)
+    border: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    color: var(--text-main);
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3);
+    outline: none;
 }
+
+.question-input:focus {
+    border: 1px solid #3a7bd5;
+    box-shadow: 0 0 15px rgba(58, 123, 213, 0.4);
+}
+
 .question-input:hover{
+    flex: 1;
     width: 50%;
-    padding: 15px 10px 15px 25px;
-    border: 1px solid #ccc;
-    height: 8px;
+    padding: 16px 25px;
     border-radius: 50px;
-    font-size: 14px;
-    box-shadow: 0 2px 8px 1px rgba(64,60,67,.24)
+    font-size: 16px;
+    border: 1px solid #3a7bd5;
+    box-shadow: 0 0 15px rgba(58, 123, 213, 0.4);
 }
 
 .submit-button {
     background-color: #000000;
     color: white;
-    padding: 10px 15px;
+    padding: 16px 30px;
     margin-left: 10px;
     border: none;
-    font-size: 14px;
-    border-radius: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 50px;
     cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    white-space: nowrap;
+}
+
+.submit-button:hover:not(:disabled) {
+    background-color: var(--btn-hover-bg);
+    color: var(--btn-hover-text);
 }
 
 .submit-button:disabled {
+    background-color: var(--btn-disabled-bg);
+    color: var(--btn-disabled-text);
+    cursor: not-allowed;
+}
+
+.download-button {
+    background-color: #2964aa;
+    color: white;
+    padding: 16px 30px;
+    margin-left: 10px;
+    border: none;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    white-space: nowrap;
+}
+
+.download-button:hover {
+    background-color: #e3e3e3;
+    color: #000000
+}
+
+.download-button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
 }
 
 .input-container{
-    width: 100%
+    display: flex;       /* 强制内部的 输入框 和 两个按钮 排成一行 */
+    align-items: center; /* 让它们在同一条水平线上居中对齐 */
+    justify-content: center;
+    gap: 15px;           /* 它们之间的间距固定为 15px */
+    width: 100%;
 }
 
 .response-container {
     margin-top: 20px;
     padding: 15px;
-    background-color: #f8f9fa;
+    background-color: var(--card-bg);
     border-left: 5px solid #007bff;
     text-align: left;
 }
@@ -67,29 +134,6 @@
 
 .response-text {
     font-size: 16px;
-    color: #333;
+    color: var(--text-main);
     white-space: pre-wrap;
-}
-
-.download-button {
-    background-color: #2964aa;
-    color: white;
-    padding: 10px 15px;
-    margin-left: 10px;
-    border: none;
-    border-radius: 20px;
-    font-size: 14px;
-    cursor: pointer;
-    margin-top: 20px;
-    transition: background 0.3s ease;
-}
-
-.download-button:hover {
-    background-color: #e3e3e3;
-    color: #000000
-}
-
-.download-button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
 }
