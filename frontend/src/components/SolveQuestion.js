@@ -52,8 +52,19 @@ const SolveQuestion = () => {
     };
 
     return (
-        <div className="container">
-            <h2>ABSTRACT - Your LeetCode AI Assistant</h2>
+        <div className={`container ${response ? 'chat-mode' : 'center-mode'}`}>
+            <h2 className="main-title">Abstract LeetCode Plus +</h2>
+
+            {response && (
+                <div className="response-container">
+                    <h3 className="response-title">AI Response:</h3>
+                    <div className="response-text">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {displayedText}
+                        </ReactMarkdown>
+                    </div>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="question-form">
                 <div className="input-container">
@@ -78,17 +89,6 @@ const SolveQuestion = () => {
             </form>
 
             {error && <p className="error">{error}</p>}
-
-            {response && (
-                <div className="response-container">
-                    <h3 className="response-title">AI Response:</h3>
-                    <div className="response-text">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {displayedText}
-                        </ReactMarkdown>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
