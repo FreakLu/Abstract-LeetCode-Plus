@@ -9,9 +9,14 @@ import asyncio
 
 from dotenv import load_dotenv
 
-
-load_dotenv()
-
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENV_PATH = os.path.join(BASE_DIR, '.env') 
+if os.path.exists(ENV_PATH):
+    load_dotenv(dotenv_path=ENV_PATH, override=True)
+    print(f"[Debug] Loaded from: {ENV_PATH}")
+    print(f"[Debug] LANGUAGE value: {os.getenv('APP_LANGUAGE')}")
+else:
+    print(f"[Error] .env file not found at: {ENV_PATH}")
 
 # 从你现有的 pipeline 中导入你的核心业务代码！
 from pipeline.llm_client import LeetCodeAgent, create_llm_client
@@ -51,7 +56,7 @@ async def solve_question_api(request: QuestionRequest):
     provider = os.getenv("LLM_PROVIDER", "openai").lower()
     model_name = os.getenv("LLM_MODEL", "gpt-4o")
     llm_client = create_llm_client(provider=provider)
-    agent = LeetCodeAgent(client=llm_client, model=model_name, language="zh")
+    agent = LeetCodeAgent(client=llm_client, model=model_name, language=None)
 
     async def generate():
         full_response_buffer = []

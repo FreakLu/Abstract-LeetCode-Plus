@@ -49,7 +49,11 @@ class LeetCodeAgent:
         self.client = client
         self.model = model
         self.max_retries = max_retries
-        self.language = language.lower()
+
+        env_language = os.getenv("APP_LANGUAGE", "en").lower()
+        self.language = (language or env_language).lower()
+        print(f"[Debug] LLMAgent Loaded LANGUAGE from env: {self.language}")
+
         if self.language == "zh":
             self.system_prompt = """你是一个专门为 LeetCode 刷题提供结构化解析的 AI 助手。
             - 必须严格遵循预设的结构化格式输出。
