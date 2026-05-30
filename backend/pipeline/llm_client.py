@@ -5,6 +5,7 @@ import os
 import time
 import re
 from typing import List, Dict, Optional
+import json
 
 # Load API key
 # client = OpenAI(
@@ -113,9 +114,9 @@ class LeetCodeAgent:
             )
 
             result = response.choices[0].message.content.strip()
-            return eval(result) if result.startswith("{") else None
+            return json.loads(result) if result.startswith("{") else None
 
-        except OpenAIError:
+        except (OpenAIError, json.JSONDecodeError): # 增加 JSON 解析错误的捕获
             return None
 
     def generate_solution(self, user_input: str) -> str:
@@ -136,7 +137,8 @@ class LeetCodeAgent:
             problem_details = self.infer_problem_details(user_input)
 
         if not problem_details:
-            return "无法识别具体的 LeetCode 题号，请补充说明。" if self.language == "zh" else "I couldn't determine the exact LeetCode problem you're referring to. Can you clarify?"
+            error_message = "无法识别具体的 LeetCode 题号，请补充说明。" if self.language == "zh" else "I couldn't determine the exact LeetCode problem you're referring to. Can you clarify?"
+            raise ValueError(error_message)
         self.current_problem = problem_details  # Store current problem for follow-ups
 
         problem_number = problem_details["problem_number"]
