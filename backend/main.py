@@ -11,6 +11,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from pipeline.llm_client import auto_check_and_update_in_background
+from pipeline.review_store import init_review_db, list_review_items, get_review_item
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, '.env') 
