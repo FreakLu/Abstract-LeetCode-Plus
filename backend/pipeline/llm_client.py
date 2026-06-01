@@ -5,6 +5,8 @@ import time
 import re
 from typing import List, Dict, Optional
 import json
+import requests
+import threading
 
 DEFAULT_LLM_PROVIDER = "pollinations"
 
@@ -21,6 +23,97 @@ PROVIDER_ALIASES = {
     "free": "pollinations",
     "openai-compatible": "custom",
 }
+
+
+_PROBLEM_DICT_CACHE = None
+def get_or_load_problem_dict() -> dict:
+        global _PROBLEM_DICT_CACHE
+        if _PROBLEM_DICT_CACHE is not None:
+            return _PROBLEM_DICT_CACHE
+
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(project_root, "data", "leetcode_problems.json")
+        
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                _PROBLEM_DICT_CACHE = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            _PROBLEM_DICT_CACHE = {}
+        return _PROBLEM_DICT_CACHE
+def update_problem_dict_from_web():
+    """
+    Updates the problem dictionary from the web.
+
+    Returns:
+        None
+    """
+    # Fetch the latest problem list from theetCode API
+    url = "https://leetcode.com/graphql"
+
+    payload = {
+        "query": """
+        query {
+            allQuestions {
+                questionFrontendId
+                title
+            }
+        }
+        """
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+        questions = response.json().get("data", {}).get("allQuestions", [])
+        
+        new_dict = {}
+        for q in questions:
+            if q.get("questionFrontendId") and q.get("title"):
+                new_dict[str(q.get("questionFrontendId"))] = q.get("title")
+                
+        if not new_dict:
+            return
+
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(project_root, "data", "leetcode_problems.json")
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(new_dict, f, indent=4, ensure_ascii=False)
+            
+        global _PROBLEM_DICT_CACHE
+        _PROBLEM_DICT_CACHE = new_dict
+        print(f"\n[Info] sync problem dict from web, total {len(new_dict)} problems.")
+    except Exception as e:
+        print(f"\n[Error] sync problem dict from web failed ({e})")
+
+
+def should_update_dict() -> bool:
+    """
+    Check if the problem dictionary should be updated.
+
+    Returns:
+        bool: True if the dictionary should be updated, False otherwise.
+    """
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(project_root,"data","leetcode_problems.json")
+    
+    if not os.path.exists(file_path):
+        return True
+        
+    last_modified_time = os.path.getmtime(file_path)
+    current_time = time.time()
+    
+    return (current_time - last_modified_time) > 604800 # 7 days
+
+def auto_check_and_update_in_background():
+    """
+    主程序调用的入口：负责判断，并决定是否要“外包”给子线程。
+    """
+    if should_update_dict():
+        print("[Info] detect problem dict is stale, start to update from web...")
+        updater_thread = threading.Thread(target=update_problem_dict_from_web, daemon=True)
+        updater_thread.start()
+    else:
+        print("[Info] problem dict is fresh, no need to update.")
 
 
 def resolve_llm_provider(provider: Optional[str] = None) -> str:
@@ -125,7 +218,7 @@ class LeetCodeAgent:
         """
         # 路径指向上一步创建的 backend/data/leetcode_problems.json
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        file_path = os.path.join(project_root, "data", "leetcode_problems.json")
+        file_path = os.path.join(project_root,"data","leetcode_problems.json")
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 return json.load(f)
@@ -157,106 +250,7 @@ class LeetCodeAgent:
 
         # 4. 字典里没有，用户也没写标题，直接拦截
         return None
-    
-    def generate_solution(self, user_input: str) -> str:
-        """
-        Generates a structured response for a LeetCode problem.
-
-        Args:
-            user_input (str): The user's input query.
-
-        Returns:
-            str: Generated markdown response.
-        """
-        # Extract problem details from user input
-        problem_details = self.extract_problem_details(user_input)
-
-        if not problem_details:
-            print("❓ Could not detect problem number and title. Trying AI-based inference...")
-            problem_details = self.infer_problem_details(user_input)
-
-        if not problem_details:
-            error_message = "无法识别具体的 LeetCode 题号，请补充说明。" if self.language == "zh" else "I couldn't determine the exact LeetCode problem you're referring to. Can you clarify?"
-            raise ValueError(error_message)
-        self.current_problem = problem_details  # Store current problem for follow-ups
-
-        problem_number = problem_details["problem_number"]
-        problem_title = problem_details["problem_title"]
-        current_date = time.strftime('%Y-%m-%d')
-
-        if self.language == "zh":
-            user_prompt = f"""
-            题目名称: "Leetcode {problem_number}. {problem_title}"
-
-            指令:
-            - 提供该题目的考察模式(Pattern)和解题思路。
-            - 解释所使用的算法，包含时间复杂度和空间复杂度。
-            - 列举该模式的适用场景以及如何扩展到类似题目。
-            - 严格按照以下 Markdown 格式输出：
-
-            ---
-
-            ### **LeetCode {problem_number}: {problem_title}** 
-             
-            | 题号 | 名称 | 上次复习 | 标签 | 题目模式与解答思路 | 适用场景与扩展 |
-            |----|------|------------|-----|--------------------------|--------------------|
-            | {problem_number} | {problem_title} | {current_date} | {{标签}} | **考察模式:** {{描述题目考察的核心模式和通用解题策略}} <br> **解题思路:** {{解释解法背后的核心思想，以及如何对暴力解法进行优化}} | 1. {{适用该模式的场景 1}} <br> 2. {{适用该模式的场景 2}} <br> 3. {{适用该模式的场景 3}} |
-
-            ---
-
-            ## **🔹 核心算法**
-            - **{{算法名称}} (`{{时间复杂度}}`)**
-              1. {{步骤 1 解释}}
-              2. {{步骤 2 解释}}
-              3. {{步骤 3 解释}}
-            - **时间复杂度:** `{{O(复杂度)}}`, 原因解释。  
-            - **空间复杂度:** `{{O(复杂度)}}`, 原因解释。  
-
-            ---
-
-            ## **🔹 Python 代码实现**
-            ```python
-            {{最优 Python 解法代码}}
-            ```
-            """
-        else:
-            user_prompt = f"""
-            Problem Name: "Leetcode {problem_number}. {problem_title}"
-
-            Instructions:
-            - Provide the problem pattern and solution approach.
-            - Explain the algorithm used, including time and space complexity.
-            - List when to use this pattern and how it scales to similar problems.
-            - Format the output exactly as follows:
-
-            ---
-
-            ### **LeetCode {problem_number}: {problem_title}** 
-             
-            | No. | Name | Last Viewed | Tag | Problem Pattern/Solution | When to Use/Scale |
-            |----|------|------------|-----|--------------------------|--------------------|
-            | {problem_number} | {problem_title} | {current_date} | {{problem_tags}} | **Problem Pattern:** {{Describe the problem pattern and general solution strategy.}} <br> **Solution Approach:** {{Explain the key idea behind the solution, including how it optimizes the problem.}} | 1. {{When to use this pattern, bullet point 1}} <br> 2. {{When to use this pattern, bullet point 2}} <br> 3. {{When to use this pattern, bullet point 3}} |
-
-            ---
-
-            ## **🔹 Algorithm Used**
-            - **{{Algorithm Name}} (`{{Time Complexity}}`)**
-              1. {{Step 1 explanation}}
-              2. {{Step 2 explanation}}
-              3. {{Step 3 explanation}}
-            - **Time Complexity:** `{{O(complexity)}}`, explanation.  
-            - **Space Complexity:** `{{O(complexity)}}`, explanation.  
-
-            ---
-
-            ## **🔹 Python Code**
-            ```python
-            {{Optimized Python code solution}}
-            ```
-            """
-
-        return self._send_message(user_prompt, is_new_question=True)
-    
+     
     def stream_solution(self, user_input: str):
         """
         流式生成解决方案。利用 yield 关键字，大模型吐出一个 token，就立马推给外层。
@@ -449,8 +443,7 @@ class LeetCodeAgent:
                 retries += 1
 
         return "Error: Failed to get a response after retries."
-
-
+    
 # Example Usage
 if __name__ == "__main__":
     agent = LeetCodeAgent(model="gpt-4")
