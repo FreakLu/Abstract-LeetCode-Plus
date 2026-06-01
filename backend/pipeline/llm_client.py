@@ -1,4 +1,3 @@
-import openai
 from openai import OpenAI
 from openai import OpenAIError
 import os
@@ -7,36 +6,83 @@ import re
 from typing import List, Dict, Optional
 import json
 
-# Load API key
-# client = OpenAI(
-#     api_key=os.getenv("OPENAI_API_KEY")
-# )
+DEFAULT_LLM_PROVIDER = "pollinations"
 
-def create_llm_client(provider: str = "openai") -> OpenAI:
+DEFAULT_MODELS = {
+    "pollinations": "openai",
+    "openai": "gpt-4o",
+    "deepseek": "deepseek-chat",
+    "siliconflow": "Qwen/Qwen2.5-72B-Instruct",
+    "custom": "gpt-4o-mini",
+}
+
+PROVIDER_ALIASES = {
+    "default": "pollinations",
+    "free": "pollinations",
+    "openai-compatible": "custom",
+}
+
+
+def resolve_llm_provider(provider: Optional[str] = None) -> str:
+    """
+    Returns the configured provider. The default path is intentionally free and
+    zero-config so quick installs do not need an API key before trying the app.
+    """
+    configured_provider = provider or os.getenv("LLM_PROVIDER") or DEFAULT_LLM_PROVIDER
+    configured_provider = configured_provider.strip().lower()
+    return PROVIDER_ALIASES.get(configured_provider, configured_provider)
+
+
+def resolve_llm_model(provider: Optional[str] = None) -> str:
+    provider = resolve_llm_provider(provider)
+    return os.getenv("LLM_MODEL") or DEFAULT_MODELS.get(provider, DEFAULT_MODELS["pollinations"])
+
+
+def _required_env(name: str, provider: str) -> str:
+    value = os.getenv(name)
+    if value:
+        return value
+    raise ValueError(f"Provider '{provider}' requires {name}. Use the default provider for zero-config setup.")
+
+
+def create_llm_client(provider: Optional[str] = None) -> OpenAI:
     """
     Creates and returns an OpenAI-compatible client based on the specified provider.
     
     Args:
-        provider (str): The API provider ("openai", "deepseek", "siliconflow").
+        provider (str): The API provider ("pollinations", "openai", "deepseek",
+            "siliconflow", or "custom").
         
     Returns:
         OpenAI: The initialized client.
     """
-    provider = provider.lower()
+    provider = resolve_llm_provider(provider)
+
+    if provider == "pollinations":
+        return OpenAI(
+            api_key=os.getenv("POLLINATIONS_API_KEY") or os.getenv("LLM_API_KEY") or "anonymous",
+            base_url=os.getenv("POLLINATIONS_BASE_URL") or "https://text.pollinations.ai/openai"
+        )
     
-    if provider == "openai":
-        return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    elif provider == "openai":
+        return OpenAI(api_key=_required_env("OPENAI_API_KEY", provider))
         
     elif provider == "deepseek":
         return OpenAI(
-            api_key=os.getenv("DEEPSEEK_API_KEY"),
-            base_url="https://api.deepseek.com"
+            api_key=_required_env("DEEPSEEK_API_KEY", provider),
+            base_url=os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
         )
         
     elif provider == "siliconflow":
         return OpenAI(
-            api_key=os.getenv("SILICONFLOW_API_KEY"),
-            base_url="https://api.siliconflow.cn/v1"
+            api_key=_required_env("SILICONFLOW_API_KEY", provider),
+            base_url=os.getenv("SILICONFLOW_BASE_URL") or "https://api.siliconflow.cn/v1"
+        )
+
+    elif provider == "custom":
+        return OpenAI(
+            api_key=os.getenv("LLM_API_KEY") or "custom",
+            base_url=_required_env("LLM_BASE_URL", provider)
         )
         
     else:
@@ -45,12 +91,12 @@ def create_llm_client(provider: str = "openai") -> OpenAI:
 class LeetCodeAgent:
     """LLM-powered agent for answering LeetCode problems and follow-up questions."""
 
-    def __init__(self, client: OpenAI, model: str = "gpt-4o", max_retries: int = 3, language: str = "en"):
+    def __init__(self, client: OpenAI, model: str = "gpt-4o", max_retries: int = 3, language: str = "zh"):
         self.client = client
         self.model = model
         self.max_retries = max_retries
 
-        env_language = os.getenv("APP_LANGUAGE", "en").lower()
+        env_language = os.getenv("APP_LANGUAGE", "zh").lower()
         self.language = (language or env_language).lower()
         print(f"[Debug] LLMAgent Loaded LANGUAGE from env: {self.language}")
 

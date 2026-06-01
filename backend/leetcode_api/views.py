@@ -5,12 +5,12 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import LeetCodeProblem
 from .serializers import LeetCodeProblemSerializer
-from pipeline.llm_client import LeetCodeAgent, create_llm_client
+from pipeline.llm_client import LeetCodeAgent, create_llm_client, resolve_llm_model, resolve_llm_provider
 from pipeline.parse_response_to_csv import extract_table, parse_table_to_xlsx
 from django.http import FileResponse, HttpResponseNotFound
 import os
 from django.conf import settings
-from openai import OpenAI, OpenAIError
+from openai import OpenAIError
 
 
 def download_excel(request):
@@ -28,14 +28,8 @@ def solve_question_api(request):
     user_input = request.data.get("question")
     response = None
 
-    provider = os.getenv("LLM_PROVIDER", "openai").lower()
-
-    default_models = {
-        "openai": "gpt-4o",
-        "deepseek": "deepseek-chat",
-        "siliconflow": "Qwen/Qwen2.5-72B-Instruct"
-    }
-    model_name = os.getenv("LLM_MODEL", default_models.get(provider, "gpt-4o"))
+    provider = resolve_llm_provider()
+    model_name = resolve_llm_model(provider)
 
     try:
         llm_client = create_llm_client(provider=provider)

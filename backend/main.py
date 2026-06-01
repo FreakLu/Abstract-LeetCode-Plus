@@ -16,10 +16,10 @@ if os.path.exists(ENV_PATH):
     print(f"[Debug] Loaded from: {ENV_PATH}")
     print(f"[Debug] LANGUAGE value: {os.getenv('APP_LANGUAGE')}")
 else:
-    print(f"[Error] .env file not found at: {ENV_PATH}")
+    print("[Info] backend/.env not found. Using the free default LLM provider.")
 
 # 从你现有的 pipeline 中导入你的核心业务代码！
-from pipeline.llm_client import LeetCodeAgent, create_llm_client
+from pipeline.llm_client import LeetCodeAgent, create_llm_client, resolve_llm_model, resolve_llm_provider
 from pipeline.parse_response_to_csv import extract_table, parse_table_to_xlsx
 
 app = FastAPI()
@@ -53,8 +53,8 @@ async def solve_question_api(request: QuestionRequest):
     user_input = sanitize_question(request.question)
     
     # 初始化你的 Agent (复用你原有的逻辑)
-    provider = os.getenv("LLM_PROVIDER", "openai").lower()
-    model_name = os.getenv("LLM_MODEL", "gpt-4o")
+    provider = resolve_llm_provider()
+    model_name = resolve_llm_model(provider)
     llm_client = create_llm_client(provider=provider)
     agent = LeetCodeAgent(client=llm_client, model=model_name, language=None)
 
