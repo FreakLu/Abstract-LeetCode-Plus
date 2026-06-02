@@ -23,11 +23,12 @@ else:
     print("[Info] backend/.env not found. Using the free default LLM provider.")
 
 from pipeline.llm_client import LeetCodeAgent, create_llm_client, resolve_llm_model, resolve_llm_provider
-from pipeline.parse_response_to_csv import extract_table, parse_table_to_xlsx
+from pipeline.solution_table_exporter import extract_table, parse_table_to_xlsx
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_review_db()
     auto_check_and_update_in_background()
     yield
 
@@ -94,3 +95,15 @@ async def download_excel():
     if os.path.exists(file_path):
         return FileResponse(path=file_path, filename="leetcode_solutions.xlsx")
     raise HTTPException(status_code=404, detail="File not found")
+
+@app.get("/api/review/items")
+async def get_review_items_api():
+    return {"items": list_review_items()}
+
+
+@app.get("/api/review/items/{problem_number}")
+async def get_review_item_api(problem_number: str):
+    item = get_review_item(problem_number)
+    if not item:
+        raise HTTPException(status_code=404, detail="Review item not found")
+    return item
