@@ -2,6 +2,7 @@ import os
 import sqlite3
 from datetime import datetime
 from typing import Optional, List, Dict
+from pipeline.solution_table_exporter import parse_markdown_table_rows
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -66,3 +67,20 @@ def get_review_item(problem_number: str) -> Optional[Dict]:
             return None
 
         return row_to_dict(row)
+    
+def parse_review_item_from_table(table_text: str) -> Optional[Dict]:
+    rows = parse_markdown_table_rows(table_text)
+    if not rows:
+        return None
+
+    row = rows[0]
+
+    return {
+        "problem_number": str(int(row[0])),
+        "problem_title": row[1],
+        "last_viewed": row[2],
+        "tags": row[3],
+        "pattern_solution": row[4],
+        "when_to_use": row[5],
+        "raw_table_row": "|".join(row),
+    }

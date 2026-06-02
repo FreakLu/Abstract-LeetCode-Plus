@@ -12,16 +12,6 @@ from typing import Optional
 from dotenv import load_dotenv
 from pipeline.llm_client import auto_check_and_update_in_background
 from pipeline.review_store import init_review_db, list_review_items, get_review_item
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ENV_PATH = os.path.join(BASE_DIR, '.env') 
-if os.path.exists(ENV_PATH):
-    load_dotenv(dotenv_path=ENV_PATH, override=True)
-    print(f"[Debug] Loaded from: {ENV_PATH}")
-    print(f"[Debug] LANGUAGE value: {os.getenv('APP_LANGUAGE')}")
-else:
-    print("[Info] backend/.env not found. Using the free default LLM provider.")
-
 from pipeline.llm_client import LeetCodeAgent, create_llm_client, resolve_llm_model, resolve_llm_provider
 from pipeline.solution_table_exporter import extract_table, parse_table_to_xlsx
 
