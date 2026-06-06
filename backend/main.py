@@ -7,13 +7,21 @@ from pydantic import BaseModel
 import os
 import re
 import asyncio
+import json
 from typing import Optional
 
 from dotenv import load_dotenv
 from pipeline.llm_client import auto_check_and_update_in_background
-from pipeline.review_store import init_review_db, list_review_items, get_review_item
 from pipeline.llm_client import LeetCodeAgent, create_llm_client, resolve_llm_model, resolve_llm_provider
 from pipeline.solution_table_exporter import extract_table, parse_table_to_xlsx
+
+from pipeline.review_store import (
+    init_review_db,
+    list_review_items,
+    get_review_item,
+    parse_review_item_from_table,
+    save_review_item,
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
@@ -81,8 +89,30 @@ async def solve_question_api(request: QuestionRequest):
             
         complete_response = "".join(full_response_buffer)
         table_data = extract_table(complete_response)
-        if table_data:
-            parse_table_to_xlsx(table_data)
+        if not table_data:
+            print("[Review Store] 未从 LLM 输出中找到有效表格。")
+            return
+
+        parse_table_to_xlsx(table_data)
+
+        try:
+            review_item = parse_review_item_from_table(table_data)
+
+            if not review_item:
+                print("[Review Store] 表格存在，但未解析出有效复习记录。")
+                return
+
+            saved_item = save_review_item(review_item)
+            log_item = {
+                key: value
+                for key, value in saved_item.items()
+                if key != "raw_table_row"
+            }
+
+            print("[Review Store] 已保存复习记录：")
+            print(json.dumps(log_item, ensure_ascii=False, indent=2))
+        except Exception as e:
+            print(f"[Review Store Error] 保存复习记录失败：{e}")
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

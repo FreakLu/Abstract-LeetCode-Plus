@@ -260,6 +260,69 @@ def main():
     ).fetchall()
     pprint([row_to_dict(row) for row in rows])
 
+    print_section("8. 重复写入第 20 题，并保留用户学习状态")
+
+    # 这里使用与 save_review_item(...) 相同的写入逻辑：
+    # 题号不存在时插入；题号已存在时，只更新题解内容，不覆盖错误次数、状态和笔记。
+    updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn.execute(
+        """
+        INSERT INTO review_items (
+            problem_number,
+            problem_title,
+            last_viewed,
+            tags_json,
+            pattern,
+            solution_approach,
+            use_cases_json,
+            raw_table_row,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(problem_number) DO UPDATE SET
+            problem_title = excluded.problem_title,
+            last_viewed = excluded.last_viewed,
+            tags_json = excluded.tags_json,
+            pattern = excluded.pattern,
+            solution_approach = excluded.solution_approach,
+            use_cases_json = excluded.use_cases_json,
+            raw_table_row = excluded.raw_table_row,
+            updated_at = excluded.updated_at
+        """,
+        (
+            "20",
+            "Valid Parentheses",
+            "2026-06-06",
+            json.dumps(["Stack", "String", "Simulation"]),
+            "Stack matching with bracket pairs",
+            "Use a mapping table and stack to validate each closing bracket.",
+            json.dumps(["Bracket matching", "Nested structure validation"]),
+            "|20|Valid Parentheses|updated row|",
+            updated_at,
+            updated_at,
+        ),
+    )
+    conn.commit()
+
+    row = conn.execute(
+        """
+        SELECT
+            problem_number,
+            last_viewed,
+            tags_json,
+            pattern,
+            mistake_count,
+            status,
+            notes,
+            updated_at
+        FROM review_items
+        WHERE problem_number = ?
+        """,
+        ("20",),
+    ).fetchone()
+    pprint(row_to_dict(row))
+
     # 关闭连接。内存数据库会在这里消失。
     conn.close()
 
