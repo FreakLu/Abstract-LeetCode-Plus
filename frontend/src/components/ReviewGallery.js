@@ -1,6 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
+import { pinyin } from "pinyin-pro";
 import { getReviewItems, updateReviewMastery } from "../services/api";
 import "./ReviewGallery.css";
+
+const normalizeSearchText = (text = "") => (
+    String(text)
+        .toLowerCase()
+        .replace(/[\s_-]+/g, "")
+);
+
+const getTagSearchForms = (tag) => ([
+    normalizeSearchText(tag),
+    normalizeSearchText(pinyin(tag, { toneType: "none" })),
+    normalizeSearchText(pinyin(tag, { pattern: "first", toneType: "none" })),
+]);
 
 const ReviewGallery = ({ onClose, onDownload }) => {
     const [items, setItems] = useState([]);
@@ -18,6 +31,7 @@ const ReviewGallery = ({ onClose, onDownload }) => {
     const [masterySaving, setMasterySaving] = useState(false);
     const [masteryError, setMasteryError] = useState("");
     const [tagQuery, setTagQuery] = useState("");
+    const [isTagSearchFocused, setIsTagSearchFocused] = useState(false);
     const [sortMode, setSortMode] = useState("number-asc");
     const closeTimerRef = useRef(null);
     const promptTimerRef = useRef(null);
@@ -106,6 +120,15 @@ const ReviewGallery = ({ onClose, onDownload }) => {
     };
 
     const requestCloseDetail = () => {
+        const hasRevealedContent = (
+            revealedSections.solution || revealedSections.useCases
+        );
+
+        if (!hasRevealedContent) {
+            closeDetail();
+            return;
+        }
+
         setMasteryPromptActive(false);
         window.clearTimeout(promptTimerRef.current);
 
@@ -138,13 +161,26 @@ const ReviewGallery = ({ onClose, onDownload }) => {
         }
     };
 
+    const normalizedTagQuery = normalizeSearchText(tagQuery);
+    const availableTags = [...new Set(
+        items.flatMap((item) => item.tags || [])
+    )];
+    const suggestedTags = normalizedTagQuery
+        ? availableTags
+            .filter((tag) => getTagSearchForms(tag).some((form) => (
+                form.includes(normalizedTagQuery)
+            )))
+            .slice(0, 6)
+        : [];
+
     const visibleItems = items
         .filter((item) => {
-            const normalizedQuery = tagQuery.trim().toLowerCase();
-            if (!normalizedQuery) return true;
+            if (!normalizedTagQuery) return true;
 
             return item.tags?.some((tag) => (
-                tag.toLowerCase().includes(normalizedQuery)
+                getTagSearchForms(tag).some((form) => (
+                    form.includes(normalizedTagQuery)
+                ))
             ));
         })
         .sort((firstItem, secondItem) => {
@@ -195,7 +231,7 @@ const ReviewGallery = ({ onClose, onDownload }) => {
                     <p>Review Gallery</p>
                 </div>
                 <div className="review-gallery-tools">
-                    <label className="review-tag-search">
+                    <div className="review-tag-search">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                             <circle cx="11" cy="11" r="7"></circle>
                             <path d="m20 20-4-4"></path>
@@ -204,9 +240,26 @@ const ReviewGallery = ({ onClose, onDownload }) => {
                             type="search"
                             value={tagQuery}
                             onChange={(event) => setTagQuery(event.target.value)}
-                            placeholder="筛选标签"
+                            onFocus={() => setIsTagSearchFocused(true)}
+                            onBlur={() => setIsTagSearchFocused(false)}
+                            placeholder="标签 / 拼音"
+                            aria-label="筛选标签"
                         />
-                    </label>
+                        {isTagSearchFocused && suggestedTags.length > 0 && (
+                            <div className="review-tag-suggestions">
+                                {suggestedTags.map((tag) => (
+                                    <button
+                                        type="button"
+                                        key={tag}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={() => setTagQuery(tag)}
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     <select
                         className="review-sort-select"
                         value={sortMode}
